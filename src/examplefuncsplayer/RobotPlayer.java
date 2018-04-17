@@ -34,7 +34,6 @@ public strictfp class RobotPlayer {
 	}
 
     static void runArchon() throws GameActionException {
-        System.out.println("I'm an archon!");
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -69,7 +68,6 @@ public strictfp class RobotPlayer {
     }
 
 	static void runGardener() throws GameActionException {
-        System.out.println("I'm a gardener!");
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -84,6 +82,10 @@ public strictfp class RobotPlayer {
 
                 // Generate a random direction
                 Direction dir = randomDirection();
+
+                if (Math.random() < 0.1 && rc.canPlantTree(dir) ){
+                	rc.plantTree(dir);
+                }
 
                 // Randomly attempt to build a soldier or lumberjack in this direction
                 if (rc.canBuildRobot(RobotType.SOLDIER, dir) && Math.random() < .01) {
@@ -106,7 +108,6 @@ public strictfp class RobotPlayer {
     }
 
     static void runSoldier() throws GameActionException {
-        System.out.println("I'm an soldier!");
         Team enemy = rc.getTeam().opponent();
 
         // The code you want your robot to perform every round should be in this loop
@@ -142,7 +143,6 @@ public strictfp class RobotPlayer {
     }
 
     static void runLumberjack() throws GameActionException {
-        System.out.println("I'm a lumberjack!");
         Team enemy = rc.getTeam().opponent();
 
         // The code you want your robot to perform every round should be in this loop
