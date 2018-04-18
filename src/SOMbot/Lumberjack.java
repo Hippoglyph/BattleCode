@@ -16,7 +16,21 @@ public class Lumberjack extends Unit{
 
                 // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
                 try {
-
+                    TreeInfo[] trees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
+                    RobotInfo[] enemies = rc.senseNearbyRobots(-1,rc.getTeam().opponent());
+                    RobotInfo[] friends = rc.senseNearbyRobots(-1,rc.getTeam());
+                   
+                    if(enemies.length > friends.length)
+                        flee();
+                    else if(trees.length == 0 && enemies.length > 0)
+                        attack(enemies, friends);
+                    else if(trees.length > 0)
+                        handleClosestTrees(trees);
+                    else
+                        wanderingRumba();
+                    
+                    
+                    /*
                     // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
                     RobotInfo[] robots = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius+GameConstants.LUMBERJACK_STRIKE_RADIUS, enemy);
 
@@ -33,12 +47,12 @@ public class Lumberjack extends Unit{
                             MapLocation enemyLocation = robots[0].getLocation();
                             Direction toEnemy = myLocation.directionTo(enemyLocation);
 
-                            tryMove(toEnemy);
+                            //tryMove(toEnemy);
                         } else {
                             // Move Randomly
-                            tryMove(randomDirection());
+                            //tryMove(randomDirection());
                         }
-                    }
+                    }*/
 
                     // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                     Clock.yield();
@@ -48,5 +62,41 @@ public class Lumberjack extends Unit{
                     e.printStackTrace();
                 }
             }
+        }
+
+        void flee() throws GameActionException{
+            pathTo(friendlySpawn);
+        }
+
+        void attack(RobotInfo[] enemies, RobotInfo[] friends) throws GameActionException{
+            int enemiesInRange = 0;
+            int friendsInRange = 0;
+            for (RobotInfo enemy : enemies){
+                if(enemy.getLocation().distanceTo(rc.getLocation()) < RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS)
+                    enemiesInRange++;
+            }
+            for (RobotInfo friend : friends){
+                if(friend.getLocation().distanceTo(rc.getLocation()) < RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS)
+                    friendsInRange++;
+            }
+            if(!rc.canStrike() && enemiesInRange > friendsInRange)
+                rc.strike();
+
+            pathTo(enemies[0].getLocation());
+            return;
+        }
+
+        void handleClosestTrees(TreeInfo[] trees) throws GameActionException{
+            if (trees.length > 0){
+                for(TreeInfo tree : trees){
+                    if(tree.containedBullets > 0 && rc.canShake(tree.ID))
+                        rc.shake(tree.ID);
+                }
+                if(rc.canChop(trees[0].ID))
+                    rc.chop(trees[0].ID);
+                else
+                    pathTo(trees[0].getLocation());
+            }
+            return;
         }
     }

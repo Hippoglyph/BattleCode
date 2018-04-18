@@ -4,11 +4,25 @@ import battlecode.common.*;
 public abstract class Unit{
 	RobotController rc;
 	RobotType type;
-	MapLocation initArchonLocation;
+	MapLocation enemySpawn;
+    Direction lastDirection;
+    boolean useLastDirection;
+    int hugDirection = -1;
+    MapLocation friendlySpawn;
+    Direction wanderingDir;
+    int birthday;
 	public Unit(RobotController rc){
 		this.rc = rc;
 		this.type = rc.getType();
-		this.initArchonLocation = rc.getInitialArchonLocations(rc.getTeam().opponent())[0];
+		this.enemySpawn = rc.getInitialArchonLocations(rc.getTeam().opponent())[0];
+        this.friendlySpawn = rc.getInitialArchonLocations(rc.getTeam())[0];
+        this.useLastDirection = false;
+        float leftyrighty = (float)Math.random();
+        if (leftyrighty < 0.5)
+            this.hugDirection = 1;
+        this.wanderingDir = randomDirection();
+        this.birthday = rc.getRoundNum();
+    
 	}
 
 	public abstract void run();
@@ -103,6 +117,44 @@ public abstract class Unit{
         float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
 
         return (perpendicularDist <= rc.getType().bodyRadius);
+    }
+
+    void pathTo(MapLocation to) throws GameActionException{
+        if(rc.hasMoved())
+            return;
+        MapLocation myLocation = rc.getLocation();
+        Direction dir = new Direction(myLocation, to);
+        if(useLastDirection && rc.canMove(lastDirection)){
+            rc.move(lastDirection);
+            useLastDirection = false;
+            return;
+        }
+        else if(!useLastDirection && rc.canMove(dir)){
+            rc.move(dir);
+            return;
+        }
+        float maxAngle = (float) Math.PI*2;
+        for(float angle = (float)Math.PI/8; angle <= maxAngle; angle+=(float)Math.PI/7){
+           // rc.setIndicatorLine(myLocation, myLocation.add(dir.rotateLeftDegrees(angle),1),0,0,255);
+
+            if(rc.canMove(dir.rotateLeftRads(hugDirection*angle))){
+                rc.move(dir.rotateLeftRads(hugDirection*angle));
+                useLastDirection = true;
+                lastDirection = dir.rotateLeftRads(hugDirection*angle);
+
+                return;
+            }
+        }
+    }
+
+    void wanderingRumba() throws GameActionException{
+        if(rc.hasMoved())
+            return;
+        if (rc.canMove(wanderingDir))
+            rc.move(wanderingDir);
+        else
+            wanderingDir = randomDirection();
+        
     }
 
 
