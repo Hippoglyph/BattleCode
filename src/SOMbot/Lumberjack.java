@@ -79,7 +79,7 @@ public class Lumberjack extends Unit{
                 if(friend.getLocation().distanceTo(rc.getLocation()) < RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS)
                     friendsInRange++;
             }
-            if(!rc.canStrike() && enemiesInRange > friendsInRange)
+            if(rc.canStrike() && enemiesInRange > friendsInRange)
                 rc.strike();
 
             pathTo(enemies[0].getLocation());
@@ -87,6 +87,14 @@ public class Lumberjack extends Unit{
         }
 
         void handleClosestTrees(TreeInfo[] trees) throws GameActionException{
+            RobotInfo[] strikeFriends = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS, rc.getTeam());
+            int chopTrees = 0;
+            for(TreeInfo tree : trees){
+                if (tree.getLocation().distanceTo(rc.getLocation()) < RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS)
+                    chopTrees++;
+            }
+            if(chopTrees > 0 && strikeFriends.length == 0 && rc.canStrike())
+                rc.strike();
             if (trees.length > 0){
                 for(TreeInfo tree : trees){
                     if(tree.containedBullets > 0 && rc.canShake(tree.ID))

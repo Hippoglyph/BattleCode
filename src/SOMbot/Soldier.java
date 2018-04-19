@@ -3,8 +3,10 @@ import battlecode.common.*;
 
 
 public class Soldier extends Unit{
+    boolean harasser;
     public Soldier(RobotController rc){
         super(rc);
+        harasser = probIs((float)1.0);
     }
 
     @Override
@@ -23,15 +25,47 @@ public class Soldier extends Unit{
 
                 // If there are some...
                 if (robots.length > 0) {
-                    // And we have enough bullets, and haven't attacked yet this turn...
-                    if (rc.canFireSingleShot()) {
-                        // ...Then fire a bullet in the direction of the enemy.
-                        rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
+                     RobotInfo closestRobot = robots[0];
+                    for (RobotInfo robot : robots){
+                        if (robot.type == RobotType.GARDENER){
+                            if(closestRobot.type != RobotType.GARDENER && robot.getLocation().distanceTo(myLocation) < closestRobot.getLocation().distanceTo(myLocation))
+                                closestRobot = robot;
+                        }
+                        else if(robot.type == RobotType.SOLDIER){
+                            if (closestRobot.type != RobotType.GARDENER && robot.getLocation().distanceTo(myLocation) < closestRobot.getLocation().distanceTo(myLocation))
+                                closestRobot = robot;
+                        }
                     }
+                    float distanceToTarget = rc.getLocation().distanceTo(closestRobot.getLocation());
+
+                    if(distanceToTarget < rc.getType().bodyRadius*6 && rc.canFireTriadShot())
+                        rc.fireTriadShot(rc.getLocation().directionTo(closestRobot.location));
+
+                    if(rc.canFireSingleShot()){
+                        rc.fireSingleShot(rc.getLocation().directionTo(closestRobot.location));
+                    }
+
+                    
+                    
+                    safeMove();
+                    
+                    
+                }
+                else{
+
+                    if(harasser){
+                        if(rc.getLocation().distanceTo(enemySpawn) < rc.getType().bodyRadius*20)
+                            wanderingRumba();
+                        else
+                            pathTo(enemySpawn);
+                    }
+                    
                 }
 
+
+
                 // Move randomly
-                tryMove(randomDirection());
+                //tryMove(randomDirection());
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -41,5 +75,8 @@ public class Soldier extends Unit{
                 e.printStackTrace();
             }
         }
-        }
     }
+
+
+
+}

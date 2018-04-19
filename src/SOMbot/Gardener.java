@@ -3,6 +3,7 @@ import battlecode.common.*;
 
 public class Gardener extends Unit{
 	private boolean foundNest;
+    private boolean clearNeutral;
 	private MapLocation nestPos;
 	private float offsetAngle;
     private float nestRange;
@@ -12,18 +13,31 @@ public class Gardener extends Unit{
         foundNest = false;
         calculateOffsetAngle();
         nestRange = type.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2;
+        clearNeutral = true;
     }
 
 
     @Override
 	public void run()  {
-        boolean spawned = false;
+        
         // Try/catch blocks stop unhandled exceptions, which cause your robot to explode         
         try {
+            TreeInfo[] trees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
+            if (trees.length > 0){
+                for(float i = 0; i < (float)Math.PI*2; i+=(float)Math.PI/8){
+                    if (rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(i)) ){
+                        rc.buildRobot(RobotType.LUMBERJACK,new Direction(i));
+                        break;
+                    }
+                }
+            }
         // The code you want your robot to perform every round should be in this loop
 	        while (true) {
                 // Listen for home archon's location
                 // Generate a random direction
+                shakeNeutralTrees();
+                
+
 
                 if (!foundNest){
                 	foundNest = trySpawnNest();
@@ -39,13 +53,12 @@ public class Gardener extends Unit{
                 	waterTrees();
                 }
 
-                float soldierSpawn = (float)Math.random();
-                float lumberJackSpawn = (float)Math.random();
+                boolean soldierSpawn = probIs(0.5f);
+                boolean lumberJackSpawn = probIs(0.5f);
 
-                if (rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos)) && soldierSpawn < 0.0)
+                if (soldierSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos)))
                     rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
-                if (rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos)) && lumberJackSpawn < 1.0 && !spawned){
-                    spawned = true;
+                if (lumberJackSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos)) ){
                     rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
                 }
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
@@ -113,6 +126,16 @@ public class Gardener extends Unit{
     			rc.water(trees[treeId].ID);
     	}
 
+    }
+
+    private void shakeNeutralTrees() throws GameActionException{
+        if(clearNeutral){
+           TreeInfo[] interactableTrees = rc.senseNearbyTrees(rc.getType().bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE, Team.NEUTRAL);
+            if(interactableTrees.length > 0 && rc.canShake(interactableTrees[0].ID))
+                rc.shake(interactableTrees[0].ID); 
+            if(foundNest && interactableTrees.length == 0)
+                clearNeutral = false;
+        }
     }
 
     private void calculateOffsetAngle(){
