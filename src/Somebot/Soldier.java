@@ -1,4 +1,4 @@
-package SOMbot;
+package Somebot;
 import battlecode.common.*;
 
 
@@ -18,7 +18,6 @@ public class Soldier extends Unit{
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
-                broadcastHandle.reportExistence();
                 MapLocation myLocation = rc.getLocation();
 
                 // See if there are any nearby enemy robots

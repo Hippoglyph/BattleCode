@@ -1,0 +1,38 @@
+package Somebot;
+import battlecode.common.*;
+
+public strictfp class RobotPlayer {
+
+    /**
+     * run() is the method that is called when a robot is instantiated in the Battlecode world.
+     * If this method returns, the robot dies!
+    **/
+    @SuppressWarnings("unused")
+    public static void run(RobotController rc) throws GameActionException {
+
+        // This is the RobotController object. You use it to perform actions from this robot,
+        // and to get information on its current status.
+
+        // Here, we've separated the controls into a different method for each RobotType.
+        // You can add the missing ones or rewrite this into your own control structure.
+        switch (rc.getType()) {
+            case ARCHON:
+                Archon archon = new Archon(rc);
+                archon.run();
+                break;
+            case GARDENER:
+                Gardener gardener = new Gardener(rc);
+                gardener.run();
+                break;
+            case SOLDIER:
+                Soldier soldier = new Soldier(rc);
+                soldier.run();
+                break;
+            case LUMBERJACK:
+                Lumberjack lumberjack = new Lumberjack(rc);
+                lumberjack.run();
+                break;
+        }
+    }
+}
+  

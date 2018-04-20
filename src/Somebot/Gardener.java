@@ -1,4 +1,4 @@
-package SOMbot;
+package Somebot;
 import battlecode.common.*;
 
 public class Gardener extends Unit{
@@ -33,7 +33,6 @@ public class Gardener extends Unit{
             }
         // The code you want your robot to perform every round should be in this loop
 	        while (true) {
-                broadcastHandle.reportExistence();
                 // Listen for home archon's location
                 // Generate a random direction
                 shakeNeutralTrees();
@@ -53,7 +52,15 @@ public class Gardener extends Unit{
                 	buildNest();
                 	waterTrees();
                 }
-                spawnDudes();
+
+                boolean soldierSpawn = probIs(0.5f);
+                boolean lumberJackSpawn = probIs(0.5f);
+
+                if (soldierSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos)))
+                    rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
+                if (lumberJackSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos)) ){
+                    rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
+                }
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 	        } 
@@ -177,38 +184,6 @@ public class Gardener extends Unit{
         y += Math.sin(angle);
         tryMove(new Direction(x,y));
         
-    }
-
-    private void spawnDudes() throws GameActionException{
-        boolean spawnSoldier = broadcastHandle.shouldSpawnRobot(RobotType.SOLDIER);
-        boolean spawnLumberjack = broadcastHandle.shouldSpawnRobot(RobotType.LUMBERJACK);
-        
-        boolean debug = true;
-
-        if(debug){
-
-            if(spawnLumberjack)
-                rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(new Direction(enemySpawn,nestPos)),0,250,0);
-            else 
-                rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(new Direction(enemySpawn,nestPos)),250,0,0);
-        }
-
-
-        if(spawnSoldier && rc.canBuildRobot(RobotType.SOLDIER, new Direction(enemySpawn, nestPos)))
-            rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
-        if(spawnLumberjack && rc.canBuildRobot(RobotType.LUMBERJACK, new Direction(enemySpawn, nestPos)))
-            rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
-
-        /*
-        boolean soldierSpawn = probIs(0.5f);
-        boolean lumberJackSpawn = probIs(0.5f);
-
-        if (soldierSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos)))
-            rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
-        if (lumberJackSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos)) ){
-            rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
-        }
-        */
     }
 
 }

@@ -1,4 +1,4 @@
-package SOMbot;
+package Somebot;
 import battlecode.common.*;
 
 public abstract class Unit{
@@ -11,7 +11,6 @@ public abstract class Unit{
     MapLocation friendlySpawn;
     Direction wanderingDir;
     int birthday;
-    BroadcastHandler broadcastHandle;
 	public Unit(RobotController rc){
 		this.rc = rc;
 		this.type = rc.getType();
@@ -25,7 +24,6 @@ public abstract class Unit{
         //    System.out.println("hugging left");
         this.wanderingDir = randomDirection();
         this.birthday = rc.getRoundNum();
-        this.broadcastHandle = new BroadcastHandler(rc);
     
 	}
 
