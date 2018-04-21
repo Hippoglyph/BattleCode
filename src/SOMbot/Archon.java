@@ -22,6 +22,8 @@ public class Archon extends Unit{
         if(closestIndex == 0){
             isLeader = true;
         }
+
+
     }
 
 
@@ -38,21 +40,16 @@ public class Archon extends Unit{
                     doLeaderStuff();
                 }
                 broadcastHandle.reportExistence();
-                // Generate a random direction
-                Direction dir = randomDirection();
 
-                // Randomly attempt to build a gardener in this direction
-                if (rc.canHireGardener(dir) && Math.random() < .01) {
-                    rc.hireGardener(dir);
-                }
-
+                spawnGardener();
                 // Move randomly
                 tryMove(randomDirection());
 
+
+                
+
                 // Broadcast archon's location for other robots on the team to know
-                MapLocation myLocation = rc.getLocation();
-                rc.broadcast(0,(int)myLocation.x);
-                rc.broadcast(1,(int)myLocation.y);
+                
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -73,6 +70,19 @@ public class Archon extends Unit{
         int scoutCount = broadcastHandle.getCount(RobotType.SCOUT);
         int tankCount = broadcastHandle.getCount(RobotType.TANK);
 
+        if(gardenerCount < 3){
+            if(!spawnGardeners){
+                broadcastHandle.spawn(RobotType.GARDENER,true);
+                spawnGardeners = true;
+            }
+        }
+        else{
+            //do something smart
+            if(spawnGardeners){
+                broadcastHandle.spawn(RobotType.GARDENER,false);
+                spawnGardeners = false;
+            }
+        }
 
         if(soldierCount < 5){
             if(!spawnSoldiers){
@@ -105,11 +115,21 @@ public class Archon extends Unit{
             }
             
         }
-
-
-
-
         broadcastHandle.resetUnitCounts();
+    }
+
+    private void spawnGardener() throws GameActionException{
+        boolean shouldSpawnGardener = broadcastHandle.shouldSpawnRobot(RobotType.GARDENER);
+        if(shouldSpawnGardener){
+            for (float i = 0; i < (float)Math.PI*2; i+=Math.PI/4){
+                Direction dir = new Direction(i);
+                if (rc.canHireGardener(dir)) {
+                    rc.hireGardener(dir);
+                    break;
+                }
+            }
+
+        }
     }
 
 }

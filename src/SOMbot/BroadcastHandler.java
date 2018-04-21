@@ -3,20 +3,37 @@ import battlecode.common.*;
 
 public class BroadcastHandler{
 	private RobotController rc;
-	public class Channel {
-		public static final int SOLDIERCOUNT = 407;
-		public static final int LUMBERJACKCOUNT = 507;
-		public static final int GARDENERCOUNT = 590;
-		public static final int TANKCOUNT = 3096;
-		public static final int ARCHONCOUNT = 2477;
-		public static final int ENEMYPRIORITYPOSITION = 5789;
-		public static final int TREECOUNT = 6254;
-		public static final int SCOUTCOUNT = 1748;
-		public static final int SPAWNSOLDIER = 888;
-		public static final int SPAWNLUMBERJACK = 186;
-		public static final int SPAWNGARDENER = 8174;
-		public static final int SPAWNSCOUT = 9062;
-		public static final int SPAWNTANK = 2076;
+	public static class Channel {
+		public static final int SOLDIERCOUNT = 0;
+		public static final int LUMBERJACKCOUNT = 1;
+		public static final int GARDENERCOUNT = 2;
+		public static final int TANKCOUNT = 3;
+		public static final int ARCHONCOUNT = 4;
+		public static final int ENEMYPRIORITYPOSITION = 5;
+		public static final int TREECOUNT = 6;
+		public static final int SCOUTCOUNT = 7;
+		public static final int SPAWNSOLDIER = 8;
+		public static final int SPAWNLUMBERJACK = 9;
+		public static final int SPAWNGARDENER = 10;
+		public static final int SPAWNSCOUT = 11;
+		public static final int SPAWNTANK = 12;
+		public static final int[] PRIORITYTREEBASE = {13, 14, 15, 16, 17};
+		public static final int[] TREES = {18, 19, 20, 21, 22};
+		public static final int PRIORITYGARDENER = 23; 
+	}
+
+	public int encode(MapLocation loc) throws GameActionException{
+		int x = (int)(loc.x * 100f) << 16;
+		int y = (int)(loc.y * 100f);
+		return x | y;
+	}
+
+	public MapLocation decode(int code) throws GameActionException{
+		int y = code & 0xFFFF;
+		int x = (code & 0xFFFF0000) >> 16;
+		float xf = (float)x/100f;
+		float yf = (float)y/100f;
+		return new MapLocation(xf,yf);
 	}
 
 	public BroadcastHandler(RobotController unit){
@@ -106,7 +123,6 @@ public class BroadcastHandler{
 		switch (type) {
 			case LUMBERJACK:
 				rc.broadcastBoolean(Channel.SPAWNLUMBERJACK, set);
-				System.out.println(set);
 				break;
 
 			case SOLDIER:
@@ -151,5 +167,43 @@ public class BroadcastHandler{
 				break;
 		}
 		return ret;
+	}
+
+	public void reportNestTree(MapLocation tree) throws GameActionException{
+		int encoded = encode(tree);
+		for (int channel : Channel.PRIORITYTREEBASE){
+			int treeAt = rc.readBroadcast(channel);
+			if(treeAt != 0){
+				if(encoded == treeAt)
+					return;
+			}
+			else{
+				rc.broadcast(channel,encoded);
+				return;
+			}
+		}
+	}
+
+	public void resetNestTree(MapLocation tree) throws GameActionException{
+		int encoded = encode(tree);
+		for(int channel : Channel.PRIORITYTREEBASE){
+			if (decode(rc.readBroadcast(channel)).distanceTo(tree) < GameConstants.NEUTRAL_TREE_MIN_RADIUS){
+				rc.broadcast(channel,0);
+			}
+		}
+	}
+
+	public MapLocation[] getNestPriorityTrees() throws GameActionException{
+		MapLocation[] locations = new MapLocation[5];
+		int i = 0;
+		for(int channel : Channel.PRIORITYTREEBASE){
+			int encoded = rc.readBroadcast(channel);
+			if(encoded == 0)
+				locations[i] = new MapLocation(-1f,-1f);
+			else
+				locations[i] = decode(encoded);
+			i++;
+		}
+		return locations;
 	}
 }

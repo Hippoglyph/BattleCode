@@ -4,9 +4,11 @@ import battlecode.common.*;
 
 public class Soldier extends Unit{
     boolean harasser;
+    boolean reachedEnemySpawn;
     public Soldier(RobotController rc){
         super(rc);
         harasser = probIs((float)1.0);
+        reachedEnemySpawn = false;
     }
 
     @Override
@@ -27,7 +29,7 @@ public class Soldier extends Unit{
 
                 // If there are some...
                 if (robots.length > 0) {
-
+                    safeMove();
                     RobotInfo closestRobot = robots[0];
                     for (RobotInfo robot : robots){
                         //check if friend is in way of robot
@@ -54,8 +56,10 @@ public class Soldier extends Unit{
                         
                     }
                     float distanceToTarget = rc.getLocation().distanceTo(closestRobot.getLocation());
+                    if(distanceToTarget < rc.getType().bodyRadius*6 && rc.canFirePentadShot())
+                        rc.firePentadShot(rc.getLocation().directionTo(closestRobot.location));
 
-                    if(distanceToTarget < rc.getType().bodyRadius*6 && rc.canFireTriadShot())
+                    if(distanceToTarget < rc.getType().bodyRadius*8 && rc.canFireTriadShot())
                         rc.fireTriadShot(rc.getLocation().directionTo(closestRobot.location));
 
                     if(rc.canFireSingleShot()){
@@ -64,18 +68,20 @@ public class Soldier extends Unit{
 
                     
                     
-                    safeMove();
+                    
                     
                     
                 }
                 else{
 
                     if(harasser){
-                        if(rc.getLocation().distanceTo(enemySpawn) < rc.getType().bodyRadius*20)
-                            wanderingRumba();
-                        else
+                        if(!reachedEnemySpawn && rc.getLocation().distanceTo(enemySpawn) < rc.getType().bodyRadius*10)
+                            reachedEnemySpawn = true;
+                        else if(!reachedEnemySpawn)
                             pathTo(enemySpawn);
                     }
+                    if(reachedEnemySpawn)
+                        wanderingRumba();
                     
                 }
 

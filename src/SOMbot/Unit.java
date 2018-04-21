@@ -12,6 +12,8 @@ public abstract class Unit{
     Direction wanderingDir;
     int birthday;
     BroadcastHandler broadcastHandle;
+    int initPatience = 25;
+    int patience ;
 	public Unit(RobotController rc){
 		this.rc = rc;
 		this.type = rc.getType();
@@ -26,6 +28,7 @@ public abstract class Unit{
         this.wanderingDir = randomDirection();
         this.birthday = rc.getRoundNum();
         this.broadcastHandle = new BroadcastHandler(rc);
+        this.patience = this.initPatience;
     
 	}
 
@@ -153,20 +156,29 @@ public abstract class Unit{
         return ((float)Math.random() < p);
     }
 
+    void loosePatience(){
+        patience--;
+        if(patience < 0){
+            patience = initPatience;
+            hugRight= !hugRight;
+        }
+    }
+
+    void resetPatience(){
+        patience = initPatience;
+    }
+
     void pathTo(MapLocation to) throws GameActionException{
         if(rc.hasMoved())
             return;
         MapLocation myLocation = rc.getLocation();
         Direction dir = new Direction(myLocation, to);
-        if(useLastDirection && rc.canMove(lastDirection)){
-            rc.move(lastDirection);
-            useLastDirection = false;
-            return;
-        }
-        else if(!useLastDirection && rc.canMove(dir)){
+        if(rc.canMove(dir)){
             rc.move(dir);
+            hugRight = !hugRight;
             return;
         }
+
         Direction newDir;
         float maxAngle = (float) Math.PI*2;
         for(float angle = (float)Math.PI/8; angle <= maxAngle; angle+=(float)Math.PI/7){
@@ -175,8 +187,8 @@ public abstract class Unit{
             else
                 newDir = dir.rotateRightRads(angle);
             if(rc.canMove(newDir)){
+                loosePatience();
                 rc.move(newDir);
-                useLastDirection = true;
                 lastDirection = newDir;
                 return;
 

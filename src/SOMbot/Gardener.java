@@ -7,13 +7,14 @@ public class Gardener extends Unit{
 	private MapLocation nestPos;
 	private float offsetAngle;
     private float nestRange;
-
+    private boolean hasNestTrees;
 	public Gardener(RobotController rc){
         super(rc);
         foundNest = false;
         calculateOffsetAngle();
         nestRange = type.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2;
         clearNeutral = true;
+        hasNestTrees = true;
     }
 
 
@@ -37,6 +38,7 @@ public class Gardener extends Unit{
                 // Listen for home archon's location
                 // Generate a random direction
                 shakeNeutralTrees();
+
                 
 
 
@@ -50,6 +52,7 @@ public class Gardener extends Unit{
 
                 }
                 else if(foundNest){
+                    reportNeutralTreesInNest();
                 	buildNest();
                 	waterTrees();
                 }
@@ -61,6 +64,18 @@ public class Gardener extends Unit{
         catch (Exception e) {
             System.out.println("Gardener Exception");
             e.printStackTrace();
+        }
+    }
+
+    private void reportNeutralTreesInNest() throws GameActionException{
+        if(hasNestTrees){
+            TreeInfo[] trees = rc.senseNearbyTrees(nestRange, Team.NEUTRAL);
+            if(trees.length == 0){
+                hasNestTrees = false;
+            }
+            for(TreeInfo tree : trees){
+                broadcastHandle.reportNestTree(tree.location);
+            }
         }
     }
 
@@ -183,16 +198,6 @@ public class Gardener extends Unit{
         boolean spawnSoldier = broadcastHandle.shouldSpawnRobot(RobotType.SOLDIER);
         boolean spawnLumberjack = broadcastHandle.shouldSpawnRobot(RobotType.LUMBERJACK);
         
-        boolean debug = true;
-
-        if(debug){
-
-            if(spawnLumberjack)
-                rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(new Direction(enemySpawn,nestPos)),0,250,0);
-            else 
-                rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(new Direction(enemySpawn,nestPos)),250,0,0);
-        }
-
 
         if(spawnSoldier && rc.canBuildRobot(RobotType.SOLDIER, new Direction(enemySpawn, nestPos)))
             rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
