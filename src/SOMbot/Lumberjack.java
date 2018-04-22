@@ -3,7 +3,7 @@ import battlecode.common.*;
 
 
 public class Lumberjack extends Unit{
-    int giveUpOnPrioInit = 10;
+    int giveUpOnPrioInit = 15;
     int giveUpOnPriority;
     boolean ignorePrio = false;
     public Lumberjack(RobotController rc){
@@ -20,8 +20,9 @@ public class Lumberjack extends Unit{
 
                 // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
                 try {
+                    reportTrees();
                     broadcastHandle.reportExistence();
-                    MapLocation[] nestTrees = broadcastHandle.getNestPriorityTrees();
+                    MapLocation[] nestTrees = broadcastHandle.getPriorityTrees();
                     int nestTreesCount = nestTreesCount(nestTrees);
                     TreeInfo[] trees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
                     RobotInfo[] enemies = rc.senseNearbyRobots(-1,rc.getTeam().opponent());
@@ -34,14 +35,11 @@ public class Lumberjack extends Unit{
                         attack(enemies, friends);
                     else if(nestTreesCount > 0 && !ignorePrio)
                         handleNestTrees(nestTrees);
-                    if(trees.length > 0)
+                    else if(trees.length > 0)
                         handleClosestTrees(trees);
                     else
                         wanderingRumba();
                     
-                    
-                    if(ignorePrio)
-                        reducePriority();
 
                     // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                     Clock.yield();
@@ -54,20 +52,20 @@ public class Lumberjack extends Unit{
         }
 
         void handleNestTrees(MapLocation[] trees) throws GameActionException{
-            MapLocation closestTree = new MapLocation(-1f,-1f);
+            TreeInfo[] normalTrees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
+            MapLocation closestTree = nullMap();
             float currMin = Float.MAX_VALUE;
             for (MapLocation tree : trees){
-                if (tree.x != -1f && tree.y != -1f && rc.getLocation().distanceTo(tree) < currMin){
+                if (isValid(tree) && rc.getLocation().distanceTo(tree) < currMin){
                     closestTree = tree;
                     currMin = rc.getLocation().distanceTo(tree);
                 }
             }
-            if(closestTree.x == -1f && closestTree.y == -1f)
+            if(!isValid(closestTree))
                 return;
-            if(rc.canShake(closestTree) && rc.senseTreeAtLocation(closestTree).containedBullets > 0 )
+            if(rc.canShake(closestTree) && rc.canSenseLocation(closestTree) && rc.senseTreeAtLocation(closestTree).containedBullets > 0 )
                 rc.shake(closestTree);
 
-            //rc.setIndicatorDot(closestTree,0,255,0);
             
             if(rc.canChop(closestTree)){
                 giveUpOnPriority = giveUpOnPrioInit;
@@ -77,14 +75,15 @@ public class Lumberjack extends Unit{
             else if(rc.hasAttacked())
                 return;
             else{
-                if(rc.getLocation().distanceTo(closestTree) < type.bodyRadius * 10)
-                    reducePriority();
+                reducePriority(); //Maybe add range to this
+                if(normalTrees.length > 0 && rc.canChop(normalTrees[0].ID))
+                    rc.chop(normalTrees[0].ID);
                 pathTo(closestTree);
             }
-            if(rc.canSenseAllOfCircle(closestTree, GameConstants.NEUTRAL_TREE_MIN_RADIUS)){
-                TreeInfo[] choppedTree = rc.senseNearbyTrees(closestTree, GameConstants.NEUTRAL_TREE_MIN_RADIUS, Team.NEUTRAL);
+            if(rc.canSenseAllOfCircle(closestTree, GameConstants.NEUTRAL_TREE_MIN_RADIUS/2)){
+                TreeInfo[] choppedTree = rc.senseNearbyTrees(closestTree, GameConstants.NEUTRAL_TREE_MIN_RADIUS/2, Team.NEUTRAL);
                 if(choppedTree.length == 0){
-                    broadcastHandle.resetNestTree(closestTree);
+                    broadcastHandle.resetTree(closestTree);
                 }
             }
 
@@ -104,7 +103,7 @@ public class Lumberjack extends Unit{
         int nestTreesCount(MapLocation[] nestTrees){
             int count = 0;
             for(MapLocation tree : nestTrees){
-                if (tree.x != -1f && tree.y != -1f)
+                if (tree.x > 0f && tree.y > 0f)
                     count++;
             }
             return count;
@@ -134,25 +133,34 @@ public class Lumberjack extends Unit{
         }
 
         void handleClosestTrees(TreeInfo[] trees) throws GameActionException{
-            RobotInfo[] strikeFriends = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS, rc.getTeam());
+            RobotInfo[] strikeFriends = rc.senseNearbyRobots( GameConstants.LUMBERJACK_STRIKE_RADIUS, rc.getTeam());
             int chopTrees = 0;
             for(TreeInfo tree : trees){
-                if (tree.getLocation().distanceTo(rc.getLocation()) < RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS)
+                if (tree.getLocation().distanceTo(rc.getLocation()) <  GameConstants.LUMBERJACK_STRIKE_RADIUS)
                     chopTrees++;
             }
-            if(chopTrees > 0 && strikeFriends.length == 0 && rc.canStrike())
+            if(chopTrees > 3 && strikeFriends.length == 0 && rc.canStrike()){
                 rc.strike();
+            }
             if (trees.length > 0){
                 for(TreeInfo tree : trees){
                     if(tree.containedBullets > 0 && rc.canShake(tree.ID))
                         rc.shake(tree.ID);
                 }
-                if(rc.canChop(trees[0].ID))
+                if(rc.canChop(trees[0].ID)){
+                    MapLocation chopped = trees[0].location;
                     rc.chop(trees[0].ID);
-                else if(rc.hasAttacked())
+                    TreeInfo[] choppedTree = rc.senseNearbyTrees(chopped, GameConstants.NEUTRAL_TREE_MIN_RADIUS/2, Team.NEUTRAL);
+                    if(choppedTree.length == 0 ){
+                        ignorePrio = false;
+                    }
+                    
+                }
+                else if(rc.canInteractWithTree(trees[0].ID))
                     return;
-                else
+                else{
                     pathTo(trees[0].getLocation());
+                }
 
             }
             return;

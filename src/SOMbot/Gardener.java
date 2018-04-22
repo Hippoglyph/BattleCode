@@ -12,7 +12,7 @@ public class Gardener extends Unit{
         super(rc);
         foundNest = false;
         calculateOffsetAngle();
-        nestRange = type.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2;
+        nestRange = type.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2 + type.bodyRadius/4;
         clearNeutral = true;
         hasNestTrees = true;
     }
@@ -38,11 +38,13 @@ public class Gardener extends Unit{
                 // Listen for home archon's location
                 // Generate a random direction
                 shakeNeutralTrees();
-
+                reportTrees();
+                reportClosestEnemy();
                 
 
 
                 if (!foundNest){
+                    broadcastHandle.reportNotFoundNest();
                 	foundNest = trySpawnNest();
                 	//tryMove(randomDirection());
                     if(rc.getRoundNum() - birthday > 40)
@@ -156,7 +158,9 @@ public class Gardener extends Unit{
     private void moveForNest() throws GameActionException{
         float x = 0.f;
         float y = 0.f;
+        /*
         RobotInfo[] robots = rc.senseNearbyRobots(nestRange*2);
+
         for(int i = 0; i < robots.length; i++){
             float distance = rc.getLocation().distanceTo(robots[i].getLocation());
             if (robots[i].getID() != rc.getID()){
@@ -165,6 +169,7 @@ public class Gardener extends Unit{
             }
             
         }
+        */
         TreeInfo[] trees = rc.senseNearbyTrees(nestRange, rc.getTeam());
         for(int i = 0; i < trees.length; i++){
             float distance = rc.getLocation().distanceTo(trees[i].getLocation());
@@ -197,23 +202,16 @@ public class Gardener extends Unit{
     private void spawnDudes() throws GameActionException{
         boolean spawnSoldier = broadcastHandle.shouldSpawnRobot(RobotType.SOLDIER);
         boolean spawnLumberjack = broadcastHandle.shouldSpawnRobot(RobotType.LUMBERJACK);
-        
 
-        if(spawnSoldier && rc.canBuildRobot(RobotType.SOLDIER, new Direction(enemySpawn, nestPos)))
-            rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
+
+        
         if(spawnLumberjack && rc.canBuildRobot(RobotType.LUMBERJACK, new Direction(enemySpawn, nestPos)))
             rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
-
-        /*
-        boolean soldierSpawn = probIs(0.5f);
-        boolean lumberJackSpawn = probIs(0.5f);
-
-        if (soldierSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos)))
+        if(spawnSoldier && rc.canBuildRobot(RobotType.SOLDIER, new Direction(enemySpawn, nestPos)))
             rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
-        if (lumberJackSpawn && rc.getTeamBullets() > 400 && rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos)) ){
-            rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
-        }
-        */
+        
+
+        
     }
 
 }

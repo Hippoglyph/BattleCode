@@ -5,10 +5,16 @@ import battlecode.common.*;
 public class Soldier extends Unit{
     boolean harasser;
     boolean reachedEnemySpawn;
+    MapLocation previousLocation;
+
+    int cutTreeCounter;
+    int cutTreeCounterInit = 30;
     public Soldier(RobotController rc){
         super(rc);
         harasser = probIs((float)1.0);
         reachedEnemySpawn = false;
+        cutTreeCounter = cutTreeCounterInit;
+        previousLocation = rc.getLocation();
     }
 
     @Override
@@ -20,8 +26,23 @@ public class Soldier extends Unit{
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+                reportTrees();
                 broadcastHandle.reportExistence();
+                MapLocation[] prioTargets = broadcastHandle.getPriorityTargets();
                 MapLocation myLocation = rc.getLocation();
+                MapLocation closestPrio = nullMap();
+                float curDist = Float.MAX_VALUE;
+                for(MapLocation prio : prioTargets){
+                    if(isValid(prio) && myLocation.distanceTo(prio) < curDist){
+                        closestPrio = prio;
+                        curDist = myLocation.distanceTo(prio);
+                    }
+                    if(rc.canSenseAllOfCircle(prio,rc.getType().bodyRadius)){
+                        RobotInfo[] sensed = rc.senseNearbyRobots(prio,rc.getType().bodyRadius,enemy);
+                        if(sensed.length == 0)
+                            broadcastHandle.resetEnemy(prio);
+                    }
+                }
 
                 // See if there are any nearby enemy robots
                 RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
@@ -55,6 +76,7 @@ public class Soldier extends Unit{
                         }
                         
                     }
+                    broadcastHandle.reportEnemy(closestRobot.location);
                     float distanceToTarget = rc.getLocation().distanceTo(closestRobot.getLocation());
                     if(distanceToTarget < rc.getType().bodyRadius*6 && rc.canFirePentadShot())
                         rc.firePentadShot(rc.getLocation().directionTo(closestRobot.location));
@@ -65,21 +87,31 @@ public class Soldier extends Unit{
                     if(rc.canFireSingleShot()){
                         rc.fireSingleShot(rc.getLocation().directionTo(closestRobot.location));
                     }
-
-                    
-                    
-                    
-                    
-                    
+    
                 }
                 else{
+                    MapLocation goTo = nullMap();
+                    if(!reachedEnemySpawn)
+                        goTo = enemySpawn;
+                    if(isValid(closestPrio))
+                        goTo = closestPrio;
 
-                    if(harasser){
-                        if(!reachedEnemySpawn && rc.getLocation().distanceTo(enemySpawn) < rc.getType().bodyRadius*10)
-                            reachedEnemySpawn = true;
-                        else if(!reachedEnemySpawn)
-                            pathTo(enemySpawn);
+
+                    if(!reachedEnemySpawn && rc.getLocation().distanceTo(enemySpawn) < rc.getType().bodyRadius*10)
+                        reachedEnemySpawn = true;
+                    else if(isValid(goTo)){
+                        cutTreeCounter--;
+                        if(cutTreeCounter < 0){
+                            if(previousLocation.distanceTo(goTo) - rc.getLocation().distanceTo(goTo) < rc.getType().bodyRadius*2){
+                                reportClosestTree();
+                            }
+                            else
+                                previousLocation = rc.getLocation();
+                            cutTreeCounter=cutTreeCounterInit;
+                        }
+                        pathTo(goTo);
                     }
+                
                     if(reachedEnemySpawn)
                         wanderingRumba();
                     
@@ -97,6 +129,13 @@ public class Soldier extends Unit{
                 System.out.println("Soldier Exception");
                 e.printStackTrace();
             }
+        }
+    }
+
+    void reportClosestTree() throws GameActionException{
+        TreeInfo[] trees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
+        if(trees.length != 0){
+            broadcastHandle.reportTree(trees[0].location);  
         }
     }
 

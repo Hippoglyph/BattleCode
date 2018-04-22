@@ -219,7 +219,7 @@ public abstract class Unit{
 
     MapLocation sampleWithinStride(){
         float angle = (float)(Math.random() * Math.PI * 2);
-        float dist = (float)Math.random() * rc.getType().strideRadius;
+        float dist = rc.getType().strideRadius;//(float)Math.random() * rc.getType().strideRadius;
         Direction dir = new Direction(angle);
         return rc.getLocation().add(dir,dist);
     }
@@ -265,5 +265,25 @@ public abstract class Unit{
             rc.move(bestLocation);
         }
         return;
+    }
+
+    void reportTrees() throws GameActionException{
+        TreeInfo[] trees = rc.senseNearbyTrees(-1, Team.NEUTRAL);
+        if(trees.length > 0)
+            broadcastHandle.reportTrees(trees.length);
+    }
+
+    boolean isValid(MapLocation loc) throws GameActionException{
+        return (loc.x > 0f && loc.y > 0f);
+    }
+
+    MapLocation nullMap() throws GameActionException{
+        return new MapLocation(-1f,-1f);
+    }
+
+    void reportClosestEnemy() throws GameActionException{
+        RobotInfo[] enemies = rc.senseNearbyRobots(-1,rc.getTeam().opponent());
+        if(enemies.length > 0)
+            broadcastHandle.reportEnemy(enemies[0].location);
     }
 }

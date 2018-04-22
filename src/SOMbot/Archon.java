@@ -38,15 +38,32 @@ public class Archon extends Unit{
 
                 if(isLeader){
                     doLeaderStuff();
+                    
                 }
                 broadcastHandle.reportExistence();
-
+                reportTrees();
                 spawnGardener();
                 // Move randomly
                 tryMove(randomDirection());
-
-
+                reportClosestEnemy();
+                /*
+                MapLocation[] prioTrees = broadcastHandle.getPriorityTrees();
+                for (MapLocation tree : prioTrees){
+                    if (isValid(tree))
+                        rc.setIndicatorDot(tree, 255, 0, 0);
+                }
                 
+
+                MapLocation[] prioTargets = broadcastHandle.getPriorityTargets();
+                int count = 0;
+                for (MapLocation target : prioTargets){
+                    if (isValid(target)){
+                        count++;
+                        rc.setIndicatorDot(target, count*255/5, 0, 0);
+                    }
+                }
+                 */
+                //System.out.println(count);
 
                 // Broadcast archon's location for other robots on the team to know
                 
@@ -69,8 +86,19 @@ public class Archon extends Unit{
         int gardenerCount = broadcastHandle.getCount(RobotType.GARDENER);
         int scoutCount = broadcastHandle.getCount(RobotType.SCOUT);
         int tankCount = broadcastHandle.getCount(RobotType.TANK);
+        int notFoundNest = broadcastHandle.getNotFoundNest();
+        int trees = broadcastHandle.getTrees();
+        int unitCount = soldierCount + lumberjackCount + gardenerCount + scoutCount + tankCount;
+        if(unitCount == 0)
+            unitCount = 1;
+        float treeUnitRatio = (float)trees/unitCount;
+        float bullets = rc.getTeamBullets();
 
-        if(gardenerCount < 3){
+        if(bullets / rc.getVictoryPointCost() >= GameConstants.VICTORY_POINTS_TO_WIN - rc.getTeamVictoryPoints()){
+            rc.donate(bullets);
+        }
+
+        if(notFoundNest < 1 && (bullets >= 350) || gardenerCount < 1){
             if(!spawnGardeners){
                 broadcastHandle.spawn(RobotType.GARDENER,true);
                 spawnGardeners = true;
@@ -84,7 +112,7 @@ public class Archon extends Unit{
             }
         }
 
-        if(soldierCount < 5){
+        if(soldierCount < gardenerCount){
             if(!spawnSoldiers){
                 broadcastHandle.spawn(RobotType.SOLDIER, true);
                 spawnSoldiers = true;
@@ -102,7 +130,7 @@ public class Archon extends Unit{
 
 
 
-        if(lumberjackCount < 4 ){
+        if((treeUnitRatio > 5f && 0.6f > (float)lumberjackCount/unitCount)|| (lumberjackCount < 1 && trees > 0)){
             if(!spawnLumberjacks){
                 broadcastHandle.spawn(RobotType.LUMBERJACK, true);
                 spawnLumberjacks = true;
@@ -115,6 +143,15 @@ public class Archon extends Unit{
             }
             
         }
+
+        if(gardenerCount > 0 && bullets > gardenerCount*RobotType.SOLDIER.bulletCost*2 && !spawnLumberjacks && !spawnSoldiers && bullets > 1000){
+            float bulletsPerPoint = rc.getVictoryPointCost();
+            float maxBullets = 100;
+            int donation = (int)(maxBullets/bulletsPerPoint);
+            rc.donate(donation * bulletsPerPoint);
+        }
+
+
         broadcastHandle.resetUnitCounts();
     }
 
