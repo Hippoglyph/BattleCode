@@ -51,11 +51,11 @@ public class Archon extends Unit{
                 else{
                     wanderingRumba();
                 }
-
+                /*
                 MapLocation nest = broadcastHandle.getNestLocation();
                 if (isValid(nest))
                     rc.setIndicatorDot(nest, 255, 0, 0);
-                
+                */
 
                 /*
                 MapLocation[] prioTrees = broadcastHandle.getPriorityTrees();
