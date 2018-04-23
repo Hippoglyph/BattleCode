@@ -288,4 +288,17 @@ public abstract class Unit{
         if(enemies.length > 0)
             broadcastHandle.reportEnemy(enemies[0].location);
     }
+
+    void resetInvalidNest() throws GameActionException{
+        MapLocation nest = broadcastHandle.getNestLocation();
+        if(!isValid(nest))
+            return;
+
+        if(!rc.canSenseAllOfCircle(nest,nestRange))
+            return;
+
+        TreeInfo[] friendlyTrees = rc.senseNearbyTrees(nest,nestRange,rc.getTeam());
+        if(friendlyTrees.length > 0)
+            broadcastHandle.resetNestLocation();
+    }
 }

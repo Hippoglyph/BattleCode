@@ -52,9 +52,9 @@ public class Archon extends Unit{
                     wanderingRumba();
                 }
 
-               // MapLocation nest = broadcastHandle.getNestLocation();
-                //if (isValid(nest))
-                   // rc.setIndicatorDot(nest, 255, 0, 0);
+                MapLocation nest = broadcastHandle.getNestLocation();
+                if (isValid(nest))
+                    rc.setIndicatorDot(nest, 255, 0, 0);
                 
 
                 /*
@@ -107,6 +107,7 @@ public class Archon extends Unit{
 
         if(bullets / rc.getVictoryPointCost() >= GameConstants.VICTORY_POINTS_TO_WIN - rc.getTeamVictoryPoints()){
             rc.donate(bullets);
+            return;
         }
 
         if(notFoundNest < 1 && (bullets >= 350) || gardenerCount < 1){
@@ -181,6 +182,7 @@ public class Archon extends Unit{
     }
 
     void reportEmptyArea() throws GameActionException{
+        resetInvalidNest();
         MapLocation best = broadcastHandle.getNestLocation();
         float curDist = Float.MAX_VALUE;
         boolean foundBetter = false;
