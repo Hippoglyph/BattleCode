@@ -6,15 +6,29 @@ public class Gardener extends Unit{
     private boolean clearNeutral;
 	private MapLocation nestPos;
 	private float offsetAngle;
-    private float nestRange;
     private boolean hasNestTrees;
+    private boolean targetAquired;
+    private MapLocation targetLocation;
+    private MapLocation previousLocation;
+    private int nestPatience;
+    private int nestPatienceInit = 30;
+    private boolean ignoreTarget = false;
 	public Gardener(RobotController rc){
         super(rc);
         foundNest = false;
         calculateOffsetAngle();
-        nestRange = type.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2 + type.bodyRadius/4;
+        
         clearNeutral = true;
         hasNestTrees = true;
+        Direction toEnemy = new Direction(rc.getLocation(), enemySpawn);
+        if(hugRight)
+            toEnemy = toEnemy.rotateLeftRads((float)Math.PI/4);
+        else
+            toEnemy = toEnemy.rotateRightRads((float)Math.PI/4);
+        wanderingDir = toEnemy;
+        targetAquired = false;
+        previousLocation = rc.getLocation();
+        nestPatience = nestPatienceInit;
     }
 
 
@@ -23,6 +37,7 @@ public class Gardener extends Unit{
         
         // Try/catch blocks stop unhandled exceptions, which cause your robot to explode         
         try {
+            targetLocation = nullMap();
             TreeInfo[] trees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
             if (trees.length > 0){
                 for(float i = 0; i < (float)Math.PI*2; i+=(float)Math.PI/8){
@@ -40,17 +55,38 @@ public class Gardener extends Unit{
                 shakeNeutralTrees();
                 reportTrees();
                 reportClosestEnemy();
-                
+                if(!targetAquired)
+                    aquireTarget();
+                //else if(!foundNest){
+                   // if(ignoreTarget)
+                        //rc.setIndicatorLine(rc.getLocation(),targetLocation,255,0,0);
+                    //else
+                        //rc.setIndicatorLine(rc.getLocation(),targetLocation,0,0,255);
+               // }
 
 
                 if (!foundNest){
-                    broadcastHandle.reportNotFoundNest();
-                	foundNest = trySpawnNest();
                 	//tryMove(randomDirection());
-                    if(rc.getRoundNum() - birthday > 40)
+                    if(targetAquired && !ignoreTarget){
+                        if(nestPatience < 0){
+                            if(previousLocation.distanceTo(targetLocation) - rc.getLocation().distanceTo(targetLocation) < rc.getType().bodyRadius*3){
+                                ignoreTarget = true;
+                            }
+                            else{
+                                previousLocation=rc.getLocation();
+                                nestPatience = nestPatienceInit;
+                            }
+                        }
+                        else
+                            nestPatience--;
+                        pathTo(targetLocation);
+                    }
+                    else if(rc.getRoundNum() - birthday > 40)
                         wanderingRumba();
                     else
                 	   moveForNest();
+                    foundNest = trySpawnNest();
+                    broadcastHandle.reportNotFoundNest();
 
                 }
                 else if(foundNest){
@@ -66,6 +102,15 @@ public class Gardener extends Unit{
         catch (Exception e) {
             System.out.println("Gardener Exception");
             e.printStackTrace();
+        }
+    }
+
+    private void aquireTarget() throws GameActionException{
+        MapLocation target = broadcastHandle.getNestLocation();
+        if(isValid(target)){
+            broadcastHandle.resetNestLocation();
+            targetAquired=true;
+            targetLocation = target;
         }
     }
 
@@ -158,18 +203,18 @@ public class Gardener extends Unit{
     private void moveForNest() throws GameActionException{
         float x = 0.f;
         float y = 0.f;
-        /*
+        
         RobotInfo[] robots = rc.senseNearbyRobots(nestRange*2);
 
         for(int i = 0; i < robots.length; i++){
             float distance = rc.getLocation().distanceTo(robots[i].getLocation());
-            if (robots[i].getID() != rc.getID()){
+            if (robots[i].getID() != rc.getID() && robots[i].getType() == RobotType.GARDENER){
                 x += ((-robots[i].getLocation().x + rc.getLocation().x)*(nestRange*2-distance))/(nestRange*2);
                 y += ((-robots[i].getLocation().y + rc.getLocation().y)*(nestRange*2-distance))/(nestRange*2);
             }
             
         }
-        */
+        
         TreeInfo[] trees = rc.senseNearbyTrees(nestRange, rc.getTeam());
         for(int i = 0; i < trees.length; i++){
             float distance = rc.getLocation().distanceTo(trees[i].getLocation());

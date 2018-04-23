@@ -21,6 +21,7 @@ public class BroadcastHandler{
 		public static final int[] TREES = {18, 19, 20, 21, 22};
 		public static final int[] PRIORITYTARGETS = {23,24,25,26,27};
 		public static final int NOTFOUNDNEST = 28;
+		public static final int NESTLOCATION = 29;
 	}
 
 	public int encode(MapLocation loc) throws GameActionException{
@@ -204,7 +205,7 @@ public class BroadcastHandler{
 		for(int channel : Channel.PRIORITYTARGETS){
 			int encoded = rc.readBroadcast(channel);
 			if(encoded == 0)
-				locations[i] = new MapLocation(-1f,-1f);
+				locations[i] = nullMap();
 			else
 				locations[i] = decode(encoded);
 			i++;
@@ -264,7 +265,7 @@ public class BroadcastHandler{
 		for(int channel : Channel.PRIORITYTREEBASE){
 			int encoded = rc.readBroadcast(channel);
 			if(encoded == 0)
-				locations[i] = new MapLocation(-1f,-1f);
+				locations[i] = nullMap();
 			else
 				locations[i] = decode(encoded);
 			i++;
@@ -272,7 +273,7 @@ public class BroadcastHandler{
 		for(int channel : Channel.TREES){
 			int encoded = rc.readBroadcast(channel);
 			if(encoded == 0)
-				locations[i] = new MapLocation(-1f,-1f);
+				locations[i] = nullMap();
 			else
 				locations[i] = decode(encoded);
 			i++;
@@ -299,8 +300,22 @@ public class BroadcastHandler{
 		return rc.readBroadcast(Channel.TREECOUNT);
 	}
 
+	public void reportNestLocation(MapLocation loc) throws GameActionException{
+		int encoded = rc.readBroadcast(Channel.NESTLOCATION);
+		if(encoded == 0)
+			rc.broadcast(Channel.NESTLOCATION, encode(loc));
+	}
 
+	public void resetNestLocation() throws GameActionException{
+		reset(Channel.NESTLOCATION);
+	}
 
+	public MapLocation getNestLocation() throws GameActionException{
+		int encoded = rc.readBroadcast(Channel.NESTLOCATION);
+		if(encoded != 0)
+			return decode(encoded);
+		return nullMap();
+	}
 
 	boolean isValid(MapLocation loc) throws GameActionException{
         return (loc.x > 0f && loc.y > 0f);

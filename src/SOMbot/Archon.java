@@ -32,20 +32,31 @@ public class Archon extends Unit{
          try {
         // The code you want your robot to perform every round should be in this loop
             while (true) {
-
                 // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
-               
-
                 if(isLeader){
                     doLeaderStuff();
-                    
                 }
+                reportClosestEnemy();
                 broadcastHandle.reportExistence();
                 reportTrees();
                 spawnGardener();
+                reportEmptyArea();
                 // Move randomly
-                tryMove(randomDirection());
-                reportClosestEnemy();
+                RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+                TreeInfo[] friendlyTrees = rc.senseNearbyTrees(-1, rc.getTeam());
+                if(friendlyTrees.length == 0 || enemies.length > 0){
+                    pathTo(friendlySpawn);
+                    wanderingDir = randomDirection();
+                }
+                else{
+                    wanderingRumba();
+                }
+
+               // MapLocation nest = broadcastHandle.getNestLocation();
+                //if (isValid(nest))
+                   // rc.setIndicatorDot(nest, 255, 0, 0);
+                
+
                 /*
                 MapLocation[] prioTrees = broadcastHandle.getPriorityTrees();
                 for (MapLocation tree : prioTrees){
@@ -166,6 +177,40 @@ public class Archon extends Unit{
                 }
             }
 
+        }
+    }
+
+    void reportEmptyArea() throws GameActionException{
+        MapLocation best = broadcastHandle.getNestLocation();
+        float curDist = Float.MAX_VALUE;
+        boolean foundBetter = false;
+        boolean prior = true;
+        if(isValid(best))
+            curDist = best.distanceTo(friendlySpawn);
+        else
+            prior = false;
+
+        for(int i = 0; i < 20; i++){
+            float angle = (float)(Math.random() * Math.PI * 2);
+            float dist = (float)Math.random() * (type.sensorRadius - nestRange);
+            MapLocation sample = rc.getLocation().add(new Direction(angle),dist);
+            TreeInfo[] trees = rc.senseNearbyTrees(sample,nestRange,rc.getTeam());
+            RobotInfo[] guardeners = rc.senseNearbyRobots(sample,nestRange,rc.getTeam());
+            int gardeners = 0;
+            for(RobotInfo gard : guardeners){
+                if(gard.getType() == RobotType.GARDENER)
+                    gardeners++;
+            }
+            if(trees.length == 0 && gardeners == 0 && rc.onTheMap(sample,nestRange) && curDist > sample.distanceTo(friendlySpawn) ){
+                best = sample;
+                curDist = sample.distanceTo(friendlySpawn);
+                foundBetter = true;
+            }
+        }
+        if(foundBetter){
+            if(prior)
+                broadcastHandle.resetNestLocation();
+            broadcastHandle.reportNestLocation(best);
         }
     }
 

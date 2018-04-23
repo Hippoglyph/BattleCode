@@ -11,11 +11,13 @@ public abstract class Unit{
     MapLocation friendlySpawn;
     Direction wanderingDir;
     int birthday;
+    float nestRange;
     BroadcastHandler broadcastHandle;
     int initPatience = 25;
-    int patience ;
+    int patience;
 	public Unit(RobotController rc){
 		this.rc = rc;
+        nestRange = RobotType.GARDENER.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2 + RobotType.GARDENER.bodyRadius/4;
 		this.type = rc.getType();
 		this.enemySpawn = rc.getInitialArchonLocations(rc.getTeam().opponent())[0];
         this.friendlySpawn = rc.getInitialArchonLocations(rc.getTeam())[0];
