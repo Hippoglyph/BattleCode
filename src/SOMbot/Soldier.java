@@ -26,8 +26,14 @@ public class Soldier extends Unit{
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+                giveUpLeader();
+                if(isLeader)
+                    doLeaderStuff();
+                else
+                    takeUpLeader();
                 reportTrees();
-                broadcastHandle.reportExistence();
+                if(!neverLeader)
+                    broadcastHandle.reportExistence();
                 MapLocation[] prioTargets = broadcastHandle.getPriorityTargets();
                 MapLocation myLocation = rc.getLocation();
                 MapLocation closestPrio = nullMap();
@@ -76,6 +82,8 @@ public class Soldier extends Unit{
                         }
                         
                     }
+                    if(!rc.hasMoved())
+                        tryMove(new Direction(rc.getLocation(), closestRobot.location));
                     broadcastHandle.reportEnemy(closestRobot.location);
                     float distanceToTarget = rc.getLocation().distanceTo(closestRobot.getLocation());
                     if(distanceToTarget < rc.getType().bodyRadius*6 && rc.canFirePentadShot())

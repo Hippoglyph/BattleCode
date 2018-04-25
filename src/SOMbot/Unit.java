@@ -15,6 +15,14 @@ public abstract class Unit{
     BroadcastHandler broadcastHandle;
     int initPatience = 25;
     int patience;
+    //Leader stuff
+    boolean isLeader = false;
+    boolean spawnSoldiers = false;
+    boolean spawnLumberjacks = false;
+    boolean spawnGardeners = false;
+    boolean spawnScouts = false;
+    boolean spawnTanks = false;
+    boolean neverLeader = false;
 	public Unit(RobotController rc){
 		this.rc = rc;
         nestRange = RobotType.GARDENER.bodyRadius*3 + GameConstants.BULLET_TREE_RADIUS*2 + RobotType.GARDENER.bodyRadius/4;
@@ -128,6 +136,32 @@ public abstract class Unit{
         return (perpendicularDist <= rc.getType().bodyRadius);
     }
 
+    boolean willCollideWithLocation(MapLocation location, MapLocation bullet, Direction bulletDir){
+        MapLocation myLocation = location;
+
+        // Get relevant bullet information
+        Direction propagationDirection = bulletDir;
+        MapLocation bulletLocation = bullet;
+
+        // Calculate bullet relations to this robot
+        Direction directionToRobot = bulletLocation.directionTo(myLocation);
+        float distToRobot = bulletLocation.distanceTo(myLocation);
+        float theta = propagationDirection.radiansBetween(directionToRobot);
+
+        // If theta > 90 degrees, then the bullet is traveling away from us and we can break early
+        if (Math.abs(theta) > Math.PI/2) {
+            return false;
+        }
+
+        // distToRobot is our hypotenuse, theta is our angle, and we want to know this length of the opposite leg.
+        // This is the distance of a line that goes from myLocation and intersects perpendicularly with propagationDirection.
+        // This corresponds to the smallest radius circle centered at our location that would intersect with the
+        // line that is the path of the bullet.
+        float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
+
+        return (perpendicularDist <= rc.getType().bodyRadius);
+    }
+
     boolean willBeAtPoint(BulletInfo bullet, MapLocation location) {
         MapLocation myLocation = location;
 
@@ -219,52 +253,16 @@ public abstract class Unit{
     	}
     }
 
-    MapLocation sampleWithinStride(){
-        float angle = (float)(Math.random() * Math.PI * 2);
-        float dist = rc.getType().strideRadius;//(float)Math.random() * rc.getType().strideRadius;
-        Direction dir = new Direction(angle);
-        return rc.getLocation().add(dir,dist);
-    }
-
-    float getSafetyScore(MapLocation location, BulletInfo[] bullets, RobotInfo[] enemies){
-        float lumberjackDamage = 0;
-        float hittingBullets = 0;
-        for(RobotInfo robot : enemies){
-            if(robot.getType() == RobotType.LUMBERJACK && robot.getLocation().distanceTo(rc.getLocation()) < RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS){
-                lumberjackDamage += robot.getType().attackPower;
-            }
-        }
-        for(BulletInfo bullet : bullets){
-            if(willBeAtPoint(bullet,location)){
-                Direction bulletDir = bullet.dir;
-                Direction towardsSample = new Direction(bullet.location, location);
-                float bulletAngle = (float)Math.PI/2 - towardsSample.radiansBetween(bulletDir);
-                hittingBullets += bullet.getDamage()*bulletAngle/(float)(Math.PI/2);
-            }
-        }
-
-        return lumberjackDamage + hittingBullets;
-    }
-
     void safeMove() throws GameActionException{
         if(rc.hasMoved())
             return;
         BulletInfo[] bullets = rc.senseNearbyBullets();
-        RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
-        float bestScore = getSafetyScore(rc.getLocation(),bullets,enemies);
-        MapLocation bestLocation = rc.getLocation();
-        for(int i = 0; i < 20; i++){
-            MapLocation sample = sampleWithinStride();
-            float sampleScore = getSafetyScore(sample, bullets, enemies);
-            if(sampleScore <= bestScore && rc.canMove(sample)){
-                //System.out.println("FOUND BETTER ");
-                bestScore = sampleScore;
-                bestLocation = sample;
+        for(BulletInfo bullet : bullets){
+            if(willCollideWithMe(bullet)){
+                if(tryMove(new Direction(rc.getLocation(), bullet.location).rotateRightRads((float)Math.PI/2)) || tryMove(new Direction(rc.getLocation(), bullet.location).rotateLeftRads((float)Math.PI)))
+                    break;
+                
             }
-        }
-
-        if(!bestLocation.equals(rc.getLocation()) && rc.canMove(bestLocation)){
-            rc.move(bestLocation);
         }
         return;
     }
@@ -301,4 +299,140 @@ public abstract class Unit{
         if(friendlyTrees.length > 0)
             broadcastHandle.resetNestLocation();
     }
+
+    void doLeaderStuff() throws GameActionException{
+        int soldierCount = broadcastHandle.getCount(RobotType.SOLDIER);
+        int lumberjackCount = broadcastHandle.getCount(RobotType.LUMBERJACK);
+        int gardenerCount = broadcastHandle.getCount(RobotType.GARDENER);
+        int scoutCount = broadcastHandle.getCount(RobotType.SCOUT);
+        int tankCount = broadcastHandle.getCount(RobotType.TANK);
+        int notFoundNest = broadcastHandle.getNotFoundNest();
+        int trees = broadcastHandle.getTrees();
+        RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(-1,rc.getTeam().opponent());
+        int unitCount = soldierCount + lumberjackCount + gardenerCount + scoutCount + tankCount;
+        if(unitCount == 0)
+            unitCount = 1;
+        float treeUnitRatio = (float)trees/unitCount;
+        float bullets = rc.getTeamBullets();
+
+        if(bullets / rc.getVictoryPointCost() >= GameConstants.VICTORY_POINTS_TO_WIN - rc.getTeamVictoryPoints()){
+            rc.donate(bullets);
+            return;
+        }
+
+        if(notFoundNest < 1 && (bullets >= 350) || gardenerCount < 1){
+            if(!spawnGardeners){
+                broadcastHandle.spawn(RobotType.GARDENER,true);
+                spawnGardeners = true;
+            }
+        }
+        else{
+            //do something smart
+            if(spawnGardeners){
+                broadcastHandle.spawn(RobotType.GARDENER,false);
+                spawnGardeners = false;
+            }
+        }
+
+        if((soldierCount < gardenerCount) || (nearbyEnemies.length > 0 && soldierCount < 3*gardenerCount)) {
+            if(!spawnSoldiers){
+                broadcastHandle.spawn(RobotType.SOLDIER, true);
+                spawnSoldiers = true;
+            }
+            
+        }
+        else {
+           // System.out.println(soldierCount);
+            if(spawnSoldiers){
+                broadcastHandle.spawn(RobotType.SOLDIER,false);
+                spawnSoldiers = false;
+            }
+            
+        }
+
+
+
+        if(((treeUnitRatio > 5f && 0.35f > (float)lumberjackCount/unitCount) || (lumberjackCount < 1 && trees > 0))){ //&& (soldierCount != 0 && nearbyEnemies.length == 0)){
+            if(!spawnLumberjacks){
+                broadcastHandle.spawn(RobotType.LUMBERJACK, true);
+                spawnLumberjacks = true;
+            }
+        }
+        else {
+            if(spawnLumberjacks){
+                broadcastHandle.spawn(RobotType.LUMBERJACK,false);
+                spawnLumberjacks = false;  
+            }
+            
+        }
+
+        if(gardenerCount > 0 && bullets > gardenerCount*RobotType.SOLDIER.bulletCost*2 && !spawnLumberjacks && !spawnSoldiers && bullets > 1000){
+            float bulletsPerPoint = rc.getVictoryPointCost();
+            float maxBullets = 100;
+            int donation = (int)(maxBullets/bulletsPerPoint);
+            rc.donate(donation * bulletsPerPoint);
+        }
+
+
+        broadcastHandle.resetUnitCounts();
+    }
+
+    void reportEmptyArea() throws GameActionException{
+        resetInvalidNest();
+        if(type.sensorRadius < nestRange)
+            return;
+        MapLocation best = broadcastHandle.getNestLocation();
+        float curDist = Float.MAX_VALUE;
+        boolean foundBetter = false;
+        boolean prior = true;
+        if(isValid(best))
+            curDist = best.distanceTo(friendlySpawn);
+        else
+            prior = false;
+
+        for(int i = 0; i < 20; i++){
+            float angle = (float)(Math.random() * Math.PI * 2);
+            float dist = (float)Math.random() * (type.sensorRadius - nestRange);
+            MapLocation sample = rc.getLocation().add(new Direction(angle),dist);
+            TreeInfo[] trees = rc.senseNearbyTrees(sample,nestRange,rc.getTeam());
+            RobotInfo[] guardeners = rc.senseNearbyRobots(sample,nestRange,rc.getTeam());
+            int gardeners = 0;
+            for(RobotInfo gard : guardeners){
+                if(gard.getType() == RobotType.GARDENER)
+                    gardeners++;
+            }
+            if(trees.length == 0 && gardeners == 0 && rc.onTheMap(sample,nestRange) && curDist > sample.distanceTo(friendlySpawn) ){
+                best = sample;
+                curDist = sample.distanceTo(friendlySpawn);
+                foundBetter = true;
+            }
+        }
+        if(foundBetter){
+            if(prior)
+                broadcastHandle.resetNestLocation();
+            broadcastHandle.reportNestLocation(best);
+        }
+    }
+
+    void giveUpLeader() throws GameActionException{
+        if(rc.getHealth()/type.maxHealth < 0.2)
+            neverLeader = true;
+        if(!isLeader)
+            return;
+        else if(neverLeader){
+            broadcastHandle.giveUpLeader();
+            isLeader = false;
+        }
+    }
+
+    void takeUpLeader() throws GameActionException{
+        if(neverLeader || isLeader)
+            return;
+        boolean shouldTakeUp = broadcastHandle.takeUpLeader();
+        if(shouldTakeUp){
+            isLeader = true;
+            spawnSoldiers = true;
+        }
+    }
+
 }

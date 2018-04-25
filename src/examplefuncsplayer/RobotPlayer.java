@@ -10,30 +10,45 @@ public strictfp class RobotPlayer {
     **/
     @SuppressWarnings("unused")
     public static void run(RobotController rc) throws GameActionException {
-
-        // This is the RobotController object. You use it to perform actions from this robot,
-        // and to get information on its current status.
+    	
         RobotPlayer.rc = rc;
-
+        
         // Here, we've separated the controls into a different method for each RobotType.
-        // You can add the missing ones or rewrite this into your own control structure.
-        switch (rc.getType()) {
+
+        RobotBehaviour robotBehaviour = null;
+        RobotType ourType = rc.getType();
+        switch (ourType) {
             case ARCHON:
-                runArchon();
+	            robotBehaviour = new ArchonBehaviour(rc, ourType);
                 break;
             case GARDENER:
-                runGardener();
+	            robotBehaviour = new GardenerBehaviour(rc, ourType);
                 break;
             case SOLDIER:
                 runSoldier();
                 break;
-            case LUMBERJACK:
-                runLumberjack();
+            case SCOUT:
+            	robotBehaviour = new ScoutBehaviour(rc, ourType);
+            	break;
+            case TANK:
+            	//
+            	break;
+            default:
+            	LumberjackBehaviour lumb = new LumberjackBehaviour(rc, ourType);
+            	lumb.run();
                 break;
         }
+
+        // Should not finish until death
+        robotBehaviour.execute();
+        
 	}
+    
+    
+    
 
     static void runArchon() throws GameActionException {
+        System.out.println("I'm an archon!");
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -68,6 +83,7 @@ public strictfp class RobotPlayer {
     }
 
 	static void runGardener() throws GameActionException {
+        System.out.println("I'm a gardener!");
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -82,10 +98,6 @@ public strictfp class RobotPlayer {
 
                 // Generate a random direction
                 Direction dir = randomDirection();
-
-                if (Math.random() < 0.1 && rc.canPlantTree(dir) ){
-                	rc.plantTree(dir);
-                }
 
                 // Randomly attempt to build a soldier or lumberjack in this direction
                 if (rc.canBuildRobot(RobotType.SOLDIER, dir) && Math.random() < .01) {
@@ -108,6 +120,7 @@ public strictfp class RobotPlayer {
     }
 
     static void runSoldier() throws GameActionException {
+        System.out.println("I'm an soldier!");
         Team enemy = rc.getTeam().opponent();
 
         // The code you want your robot to perform every round should be in this loop
@@ -143,6 +156,7 @@ public strictfp class RobotPlayer {
     }
 
     static void runLumberjack() throws GameActionException {
+        System.out.println("I'm a lumberjack!");
         Team enemy = rc.getTeam().opponent();
 
         // The code you want your robot to perform every round should be in this loop

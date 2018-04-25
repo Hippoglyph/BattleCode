@@ -22,6 +22,7 @@ public class BroadcastHandler{
 		public static final int[] PRIORITYTARGETS = {23,24,25,26,27};
 		public static final int NOTFOUNDNEST = 28;
 		public static final int NESTLOCATION = 29;
+		public static final int TAKEUPLEADER = 30;
 	}
 
 	public int encode(MapLocation loc) throws GameActionException{
@@ -324,4 +325,18 @@ public class BroadcastHandler{
     MapLocation nullMap() throws GameActionException{
         return new MapLocation(-1f,-1f);
     }
+
+    void giveUpLeader() throws GameActionException{
+    	rc.broadcastBoolean(Channel.TAKEUPLEADER,true);
+    	spawn(RobotType.SOLDIER, true);
+    }
+
+    boolean takeUpLeader() throws GameActionException{
+    	boolean shouldBeLeader = rc.readBroadcastBoolean(Channel.TAKEUPLEADER);
+    	if(shouldBeLeader)
+    		rc.broadcastBoolean(Channel.TAKEUPLEADER,false);
+    	return shouldBeLeader;
+    }
+
+
 }

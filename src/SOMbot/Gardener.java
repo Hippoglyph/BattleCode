@@ -38,18 +38,16 @@ public class Gardener extends Unit{
         // Try/catch blocks stop unhandled exceptions, which cause your robot to explode         
         try {
             targetLocation = nullMap();
-            TreeInfo[] trees = rc.senseNearbyTrees(-1,Team.NEUTRAL);
-            if (trees.length > 0){
-                for(float i = 0; i < (float)Math.PI*2; i+=(float)Math.PI/8){
-                    if (rc.canBuildRobot(RobotType.LUMBERJACK,new Direction(i)) ){
-                        rc.buildRobot(RobotType.LUMBERJACK,new Direction(i));
-                        break;
-                    }
-                }
-            }
+            
         // The code you want your robot to perform every round should be in this loop
 	        while (true) {
+                giveUpLeader();
+                if(isLeader)
+                    doLeaderStuff();
+                else
+                    takeUpLeader();
                 broadcastHandle.reportExistence();
+
                 // Listen for home archon's location
                 // Generate a random direction
                 shakeNeutralTrees();
@@ -212,7 +210,6 @@ public class Gardener extends Unit{
                 x += ((-robots[i].getLocation().x + rc.getLocation().x)*(nestRange*2-distance))/(nestRange*2);
                 y += ((-robots[i].getLocation().y + rc.getLocation().y)*(nestRange*2-distance))/(nestRange*2);
             }
-            
         }
         
         TreeInfo[] trees = rc.senseNearbyTrees(nestRange, rc.getTeam());
@@ -248,15 +245,25 @@ public class Gardener extends Unit{
         boolean spawnSoldier = broadcastHandle.shouldSpawnRobot(RobotType.SOLDIER);
         boolean spawnLumberjack = broadcastHandle.shouldSpawnRobot(RobotType.LUMBERJACK);
 
+        if(spawnSoldier)
+            spawnRobot(RobotType.SOLDIER);  
+        if(spawnLumberjack)
+            spawnRobot(RobotType.LUMBERJACK);
+             
+    }
 
-        
-        if(spawnLumberjack && rc.canBuildRobot(RobotType.LUMBERJACK, new Direction(enemySpawn, nestPos)))
-            rc.buildRobot(RobotType.LUMBERJACK,new Direction(enemySpawn,nestPos));
-        if(spawnSoldier && rc.canBuildRobot(RobotType.SOLDIER, new Direction(enemySpawn, nestPos)))
-            rc.buildRobot(RobotType.SOLDIER,new Direction(enemySpawn,nestPos));
-        
-
-        
+    private void spawnRobot(RobotType type) throws GameActionException{
+        if(rc.canBuildRobot(type, new Direction(enemySpawn, nestPos))){
+            rc.buildRobot(type,new Direction(enemySpawn,nestPos));
+            return;
+        }
+        for(float i = 0; i < (float)Math.PI*2; i+=(float)Math.PI/8){
+            if (rc.canBuildRobot(type,new Direction(i)) ){
+                rc.buildRobot(type,new Direction(i));
+                break;
+            }
+        }
+            
     }
 
 }

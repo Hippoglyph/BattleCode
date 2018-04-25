@@ -20,6 +20,11 @@ public class Lumberjack extends Unit{
 
                 // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
                 try {
+                    giveUpLeader();
+                    if(isLeader)
+                        doLeaderStuff();
+                    else
+                        takeUpLeader();
                     reportTrees();
                     broadcastHandle.reportExistence();
                     MapLocation[] nestTrees = broadcastHandle.getPriorityTrees();
@@ -29,9 +34,9 @@ public class Lumberjack extends Unit{
                     RobotInfo[] friends = rc.senseNearbyRobots(-1,rc.getTeam());
 
                    
-                    if(enemies.length > friends.length)
+                    if(enemies.length > friends.length+1)
                         flee();
-                    else if(trees.length == 0 && enemies.length > 0)
+                    else if(enemies.length > 0)
                         attack(enemies, friends);
                     else if(nestTreesCount > 0 && !ignorePrio)
                         handleNestTrees(nestTrees);

@@ -2,12 +2,7 @@ package SOMbot;
 import battlecode.common.*;
 
 public class Archon extends Unit{
-    boolean isLeader = false;
-    boolean spawnSoldiers = false;
-    boolean spawnLumberjacks = false;
-    boolean spawnGardeners = false;
-    boolean spawnScouts = false;
-    boolean spawnTanks = false;
+    
 	public Archon(RobotController rc){
         super(rc);
         float closestDist = Float.MAX_VALUE;
@@ -33,9 +28,11 @@ public class Archon extends Unit{
         // The code you want your robot to perform every round should be in this loop
             while (true) {
                 // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
-                if(isLeader){
+                giveUpLeader();
+                if(isLeader)
                     doLeaderStuff();
-                }
+                else
+                    takeUpLeader();
                 reportClosestEnemy();
                 broadcastHandle.reportExistence();
                 reportTrees();
@@ -44,20 +41,36 @@ public class Archon extends Unit{
                 // Move randomly
                 RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
                 TreeInfo[] friendlyTrees = rc.senseNearbyTrees(-1, rc.getTeam());
-                if(friendlyTrees.length == 0 || enemies.length > 0){
+                
+                if(enemies.length > 0){
+                    float x = 0f;
+                    float y = 0f;
+                    for(RobotInfo robot : enemies){
+                        float normalizer = (type.sensorRadius - robot.getLocation().distanceTo(rc.getLocation())) / type.sensorRadius;
+                        float distance = robot.location.distanceTo(rc.getLocation());
+                        x -= (robot.location.x - rc.getLocation().x)*normalizer;
+                        y -= (robot.location.y - rc.getLocation().y)*normalizer;
+                    }
+                    Direction dir = new Direction(x,y);
+
+                    tryMove(dir);
+
+                }
+                else if(friendlyTrees.length == 0 ){
                     pathTo(friendlySpawn);
                     wanderingDir = randomDirection();
                 }
                 else{
                     wanderingRumba();
                 }
+                
                 /*
                 MapLocation nest = broadcastHandle.getNestLocation();
                 if (isValid(nest))
-                    rc.setIndicatorDot(nest, 255, 0, 0);
-                */
+                    rc.setIndicatorDot(nest, 0, 255, 0);
+                
 
-                /*
+                
                 MapLocation[] prioTrees = broadcastHandle.getPriorityTrees();
                 for (MapLocation tree : prioTrees){
                     if (isValid(tree))
@@ -91,81 +104,7 @@ public class Archon extends Unit{
     }
 
 
-    private void doLeaderStuff() throws GameActionException{
-        int soldierCount = broadcastHandle.getCount(RobotType.SOLDIER);
-        int lumberjackCount = broadcastHandle.getCount(RobotType.LUMBERJACK);
-        int gardenerCount = broadcastHandle.getCount(RobotType.GARDENER);
-        int scoutCount = broadcastHandle.getCount(RobotType.SCOUT);
-        int tankCount = broadcastHandle.getCount(RobotType.TANK);
-        int notFoundNest = broadcastHandle.getNotFoundNest();
-        int trees = broadcastHandle.getTrees();
-        int unitCount = soldierCount + lumberjackCount + gardenerCount + scoutCount + tankCount;
-        if(unitCount == 0)
-            unitCount = 1;
-        float treeUnitRatio = (float)trees/unitCount;
-        float bullets = rc.getTeamBullets();
-
-        if(bullets / rc.getVictoryPointCost() >= GameConstants.VICTORY_POINTS_TO_WIN - rc.getTeamVictoryPoints()){
-            rc.donate(bullets);
-            return;
-        }
-
-        if(notFoundNest < 1 && (bullets >= 350) || gardenerCount < 1){
-            if(!spawnGardeners){
-                broadcastHandle.spawn(RobotType.GARDENER,true);
-                spawnGardeners = true;
-            }
-        }
-        else{
-            //do something smart
-            if(spawnGardeners){
-                broadcastHandle.spawn(RobotType.GARDENER,false);
-                spawnGardeners = false;
-            }
-        }
-
-        if(soldierCount < gardenerCount){
-            if(!spawnSoldiers){
-                broadcastHandle.spawn(RobotType.SOLDIER, true);
-                spawnSoldiers = true;
-            }
-            
-        }
-        else {
-           // System.out.println(soldierCount);
-            if(spawnSoldiers){
-                broadcastHandle.spawn(RobotType.SOLDIER,false);
-                spawnSoldiers = false;
-            }
-            
-        }
-
-
-
-        if((treeUnitRatio > 5f && 0.6f > (float)lumberjackCount/unitCount)|| (lumberjackCount < 1 && trees > 0)){
-            if(!spawnLumberjacks){
-                broadcastHandle.spawn(RobotType.LUMBERJACK, true);
-                spawnLumberjacks = true;
-            }
-        }
-        else {
-            if(spawnLumberjacks){
-                broadcastHandle.spawn(RobotType.LUMBERJACK,false);
-                spawnLumberjacks = false;  
-            }
-            
-        }
-
-        if(gardenerCount > 0 && bullets > gardenerCount*RobotType.SOLDIER.bulletCost*2 && !spawnLumberjacks && !spawnSoldiers && bullets > 1000){
-            float bulletsPerPoint = rc.getVictoryPointCost();
-            float maxBullets = 100;
-            int donation = (int)(maxBullets/bulletsPerPoint);
-            rc.donate(donation * bulletsPerPoint);
-        }
-
-
-        broadcastHandle.resetUnitCounts();
-    }
+    
 
     private void spawnGardener() throws GameActionException{
         boolean shouldSpawnGardener = broadcastHandle.shouldSpawnRobot(RobotType.GARDENER);
@@ -181,39 +120,8 @@ public class Archon extends Unit{
         }
     }
 
-    void reportEmptyArea() throws GameActionException{
-        resetInvalidNest();
-        MapLocation best = broadcastHandle.getNestLocation();
-        float curDist = Float.MAX_VALUE;
-        boolean foundBetter = false;
-        boolean prior = true;
-        if(isValid(best))
-            curDist = best.distanceTo(friendlySpawn);
-        else
-            prior = false;
+    
 
-        for(int i = 0; i < 20; i++){
-            float angle = (float)(Math.random() * Math.PI * 2);
-            float dist = (float)Math.random() * (type.sensorRadius - nestRange);
-            MapLocation sample = rc.getLocation().add(new Direction(angle),dist);
-            TreeInfo[] trees = rc.senseNearbyTrees(sample,nestRange,rc.getTeam());
-            RobotInfo[] guardeners = rc.senseNearbyRobots(sample,nestRange,rc.getTeam());
-            int gardeners = 0;
-            for(RobotInfo gard : guardeners){
-                if(gard.getType() == RobotType.GARDENER)
-                    gardeners++;
-            }
-            if(trees.length == 0 && gardeners == 0 && rc.onTheMap(sample,nestRange) && curDist > sample.distanceTo(friendlySpawn) ){
-                best = sample;
-                curDist = sample.distanceTo(friendlySpawn);
-                foundBetter = true;
-            }
-        }
-        if(foundBetter){
-            if(prior)
-                broadcastHandle.resetNestLocation();
-            broadcastHandle.reportNestLocation(best);
-        }
-    }
+
 
 }
